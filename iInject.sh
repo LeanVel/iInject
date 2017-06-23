@@ -96,7 +96,7 @@ fi
 #Patch Binary
 printf "${NORMAL}%s${NORMAL}\n" "Patching Binary "$binaryName" "
 
-'/home/leandro/UNI/RP2/Tools/insert_dylib/insert_dylib/main' --strip-codesig --inplace @executable_path/FridaGadget.dylib "$binaryName"
+insert_dylib --strip-codesig --inplace @executable_path/FridaGadget.dylib "$binaryName"
 
 if [ "$?" -eq "0" ]
 then
