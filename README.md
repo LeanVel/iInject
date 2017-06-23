@@ -1,4 +1,4 @@
-# iInjector
+# iInject
 Tool to automate in Linux the process of embedding dynamic libraries in iOS applications
 
 Requirements
@@ -37,7 +37,7 @@ Since the master repository (https://github.com/Tyilo/insert_dylib) does not sup
 
 isign
 -----
-To successfully sign the iOS binaries after inserting the dylib, the signer needs to support signing from scrach. Since the master repository for iSign (https://github.com/saucelabs/isign) does not support this feature, iInjector uses the version implemented by ryu2 (https://github.com/ryu2/isign). 
+To successfully sign the iOS binaries after inserting the dylib, the signer needs to support signing from scrach. Since the master repository for iSign (https://github.com/saucelabs/isign) does not support this feature, iInject uses the version implemented by ryu2 (https://github.com/ryu2/isign). 
 
 ```
   $ git clone https://github.com/ryu2/isign
@@ -45,4 +45,4 @@ To successfully sign the iOS binaries after inserting the dylib, the signer need
   $ sudo  python setup.py install
 ```  
 
-iInjector was tested using the version of iSign backuped in this repository https://github.com/LeanVel/isign
+iInject was tested using the version of iSign backuped in this repository https://github.com/LeanVel/isign
