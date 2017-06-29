@@ -1,5 +1,6 @@
 # iInject
 Tool to automate the process of embedding dynamic libraries into iOS applications from GNU/Linux.
+The tool should work for non-jailbroken iOS devices running iOS 9 or higher. 
 
 Requirements
 ============
