@@ -34,6 +34,7 @@ Since the master repository (https://github.com/Tyilo/insert_dylib) does not sup
 ```
   $ git https://github.com/LeanVel/insert_dylib
   $ cd insert_dylib
+  $ ./Install.sh
 ```
 
 isign
