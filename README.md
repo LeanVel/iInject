@@ -1,10 +1,10 @@
 # iInject
-Tool to automate in Linux the process of embedding dynamic libraries in iOS applications
+Tool to automate the process of embedding dynamic libraries into iOS applications from GNU/Linux.
 
 Requirements
 ============
 
-- IPA files without encryption nor DRM protection
+- IPA files without encryption nor Fairplay protection
 - ZIP/UNZIP
 - insert_dylib
 - iSign
