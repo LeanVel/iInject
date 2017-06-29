@@ -7,6 +7,8 @@ Requirements
 
 - IPA files without encryption nor Fairplay protection
 - ZIP/UNZIP
+- gcc
+- Python
 - insert_dylib
 - iSign
 - curl
