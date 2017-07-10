@@ -1,17 +1,21 @@
 #!/bin/bash
 
 #TODO 
-# - Add support for Arbitrary dylibs
 # - Add *proper* support for online/offline dylib provision 
 # - Add support for optional vervosity
 
 NORMAL=$(tput sgr0)
 RED=$(tput setaf 1)
 GREEN=$(tput setaf 2)
+YELLOW=$(tput setaf 3)
 
-removePlugIns=true
+#Switches 
+#TODO: use proper options to change the swithces from the command line
+removePlugIns=false
 useLocalCopy=true
-cleanUpEnabled=false
+cleanUpEnabled=true
+withPaidAccount=true
+
 
 debugDir=/dev/null
 workDirectory=/tmp/iInject
@@ -27,20 +31,79 @@ cleanUp () {
 	fi	
 }
 
+genProvisionProfile (){
+	printf "${YELLOW}%s${NORMAL}\n" "Apple Developer ID : "
+	read user
+	printf "${YELLOW}%s${NORMAL}\n" "Apple Developer Password: "
+	read -s password
+
+	if [ "$withPaidAccount" = true ]
+	then
+		#Provising profile generation with Paid Developer Account 
+		ruby $(dirname "$0")/genProvisionProfile.rb "$user" "$password" "$iDevice"
+	else
+		#Provising profile generation with Free Apple Account
+		#TODO: Add support for the new Script 
+		echo "Not yet implemented"
+	fi
+
+	if [ "$?" -eq "0" ]
+	then
+		printf "${GREEN}%s${NORMAL}\n" "New provision profile succesfully generated "
+	else
+		printf "${RED}%s${NORMAL}\n" "Error while generating new provision profile"
+		exit 1
+	fi
+}
+
+checkProvisioning (){
+	
+	#Get iDevice UUID
+	iDevice=$(idevice_id -l)
+
+	#Check that iDevice was connected
+	if [ "$?" -ne "0" ]
+	then
+		printf "${RED}%s${NORMAL}\n" "Error while checking provisioning, the target iDevice needs to be connected!"
+		exit 1
+	fi
+
+	#Check that provision is already installed
+	if [ -f ~/.isign/isign.mobileprovision ]
+	then	
+		grep -i "$iDevice"  ~/.isign/isign.mobileprovision 
+		#Check that current provision profile include target iDevice
+		if [ "$?" -eq "0" ]
+		then
+			#No need for new provision profile
+			return 0
+		fi
+	fi
+
+	printf "${YELLOW}%s${NORMAL}\n" "New provision profile is needed"
+	genProvisionProfile
+}
+
 #Main script start
 
-mkdir "$workDirectory"
-if [ $# -eq "0" ] 
+#Verify arguments
+if [ $# -lt "2" ] 
 then
-	printf "${RED}%s${NORMAL}\n" "Usage: "$0" <IPA File>"
-	cleanUp
+	printf "${RED}%s${NORMAL}\n" "Usage: "$0" <IPA File> <Dylib File>"
 	exit 1
 fi
 
-ipaFile=$1
+ipaFile="$1"
+dylibFile="$2"
+dylibName=$(basename "$dylibFile")
 ipaFilename=$(basename -s .ipa "$ipaFile")
 ipaDirname=$(dirname "$ipaFile")
-#ipaFilename=`echo $ipaFile  | sed -n "/".ipa"/s/".ipa"//p"`
+
+#Verify that provisioning is installed
+checkProvisioning
+
+#Making work directory
+mkdir "$workDirectory"
 
 #Uncompressing IPA file
 printf "${NORMAL}%s${NORMAL}\n" "Uncompressing "$ipaFilename" in "$workDirectory" "
@@ -96,7 +159,7 @@ fi
 #Patch Binary
 printf "${NORMAL}%s${NORMAL}\n" "Patching Binary "$binaryName" "
 
-insert_dylib --strip-codesig --inplace @executable_path/FridaGadget.dylib "$binaryName"
+insert_dylib --strip-codesig --inplace @executable_path/"$dylibName" "$binaryName"
 
 if [ "$?" -eq "0" ]
 then
@@ -113,7 +176,7 @@ binaryDirectory=$(dirname "$binaryName")
 if [ "$useLocalCopy" = false ]
 then
 #Download Fridagadget in the right directory
-	printf "${NORMAL}%s${NORMAL}\n" "Downloading Fridagadget in  "$binaryDirectory/" "
+	printf "${NORMAL}%s${NORMAL}\n" "Downloading Fridagadget in  $binaryDirectory/ "
 
 	curl https://build.frida.re/frida/ios/lib/FridaGadget.dylib --output "$binaryDirectory"/FridaGadget.dylib
 
@@ -127,9 +190,20 @@ then
 	fi
 else
 # Use local copy of the Gadget
-	printf "${NORMAL}%s${NORMAL}\n" "Coping local gadget to  "$binaryDirectory/" "
-	cp '/home/leandro/UNI/RP2/Tools/iInject/FridaGadget.dylib' "$binaryDirectory"/
+	printf "${NORMAL}%s${NORMAL}\n" "Coping local gadget $dylibFile to  $binaryDirectory/ "
+	cp "$dylibFile" "$binaryDirectory"/
+	
+	if [ "$?" -eq "0" ]
+	then
+		printf "${GREEN}%s${NORMAL}\n" " Gadget copied sucessfully"
+	else
+		printf "${RED}%s${NORMAL}\n" "Error while coping Gadget"
+		cleanUp
+		exit 1 
+	fi
+
 fi
+
 
 #Adjusting direcorties before ziping
 
@@ -154,7 +228,7 @@ fi
 #Signing new IPA
 printf "${NORMAL}%s${NORMAL}\n" "Signing IPA file "$workDirectory"/"$ipaFilename"-patched.ipa"
 
-isign -o "$ipaFilename"-patched-isigned.ipa "$ipaFilename"-patched.ipa
+isign -v -o "$ipaFilename"-patched-isigned.ipa "$ipaFilename"-patched.ipa > ~/file.txt 2>&1
 
 if [ "$?" -eq "0" ]
 then
