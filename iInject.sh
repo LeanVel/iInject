@@ -14,10 +14,8 @@ YELLOW=$(tput setaf 3)
 removePlugIns=false
 useLocalCopy=true
 cleanUpEnabled=true
-withPaidAccount=true
+logEnabled=false
 
-
-debugDir=/dev/null
 workDirectory=/tmp/iInject
 
 #Clean up function definition
@@ -29,31 +27,6 @@ cleanUp () {
 		echo "rm -rf "$workDirectory""	
 		rm -rf "$workDirectory"
 	fi	
-}
-
-genProvisionProfile (){
-	printf "${YELLOW}%s${NORMAL}\n" "Apple Developer ID : "
-	read user
-	printf "${YELLOW}%s${NORMAL}\n" "Apple Developer Password: "
-	read -s password
-
-	if [ "$withPaidAccount" = true ]
-	then
-		#Provising profile generation with Paid Developer Account 
-		ruby $(dirname "$0")/genProvisionProfile.rb "$user" "$password" "$iDevice"
-	else
-		#Provising profile generation with Free Apple Account
-		#TODO: Add support for the new Script 
-		echo "Not yet implemented"
-	fi
-
-	if [ "$?" -eq "0" ]
-	then
-		printf "${GREEN}%s${NORMAL}\n" "New provision profile succesfully generated "
-	else
-		printf "${RED}%s${NORMAL}\n" "Error while generating new provision profile"
-		exit 1
-	fi
 }
 
 checkProvisioning (){
@@ -68,20 +41,20 @@ checkProvisioning (){
 		exit 1
 	fi
 
-	#Check that provision is already installed
-	if [ -f ~/.isign/isign.mobileprovision ]
+	#Check that provision profile, private key and certificate are already installed
+	if [ -f ~/.isign/isign.mobileprovision ] && [ -f ~/.isign/certificate.pem ] && [ -f ~/.isign/key.pem ]
 	then	
-		grep -i "$iDevice"  ~/.isign/isign.mobileprovision 
+		grep -i "$iDevice"  ~/.isign/isign.mobileprovision >> "$debugDir" 2>&1
 		#Check that current provision profile include target iDevice
 		if [ "$?" -eq "0" ]
 		then
 			#No need for new provision profile
+			printf "${GREEN}%s${NORMAL}\n" "Provisioning profile correctly installed"
 			return 0
 		fi
 	fi
 
-	printf "${YELLOW}%s${NORMAL}\n" "New provision profile is needed"
-	genProvisionProfile
+	printf "${RED}%s${YELLOW}\n%s\n%s${NORMAL}\n" "A new provision profile is needed, please use one of the provided helper scripts:" "For paid account -> genProvisioningProfileDev <AppleID> <Password> <Device UUID>" "For Free account -> genProvisioningProfileFree <AppleID> <Password> <Device UUID> "
 }
 
 #Main script start
@@ -99,16 +72,28 @@ dylibName=$(basename "$dylibFile")
 ipaFilename=$(basename -s .ipa "$ipaFile")
 ipaDirname=$(dirname "$ipaFile")
 
+#Set up Logging
+if [ "$logEnabled" = true ]
+then
+	debugDir=$(pwd)/"iInject.log"
+	printf "${GREEN}%s${NORMAL}\n" "Log is going to be saved in ""$debugDir"
+else
+	debugDir="/dev/null"
+fi
+
+#Start log
+echo `date`" Embedding started" >> "$debugDir" 2>&1
+
 #Verify that provisioning is installed
 checkProvisioning
 
 #Making work directory
-mkdir "$workDirectory"
+mkdir "$workDirectory" >> "$debugDir" 2>&1
 
 #Uncompressing IPA file
 printf "${NORMAL}%s${NORMAL}\n" "Uncompressing "$ipaFilename" in "$workDirectory" "
 
-unzip $ipaFile -d "$workDirectory"/"$ipaFilename" > "$debugDir"
+unzip $ipaFile -d "$workDirectory"/"$ipaFilename" >> "$debugDir" 2>&1
 
 if [ "$?" -eq "0" ]
 then
@@ -159,7 +144,7 @@ fi
 #Patch Binary
 printf "${NORMAL}%s${NORMAL}\n" "Patching Binary "$binaryName" "
 
-insert_dylib --strip-codesig --inplace @executable_path/"$dylibName" "$binaryName"
+insert_dylib --strip-codesig --inplace @executable_path/"$dylibName" "$binaryName" >> "$debugDir" 2>&1
 
 if [ "$?" -eq "0" ]
 then
@@ -191,11 +176,12 @@ then
 else
 # Use local copy of the Gadget
 	printf "${NORMAL}%s${NORMAL}\n" "Coping local gadget $dylibFile to  $binaryDirectory/ "
-	cp "$dylibFile" "$binaryDirectory"/
+
+	cp "$dylibFile" "$binaryDirectory"/ >> "$debugDir" 2>&1
 	
 	if [ "$?" -eq "0" ]
 	then
-		printf "${GREEN}%s${NORMAL}\n" " Gadget copied sucessfully"
+		printf "${GREEN}%s${NORMAL}\n" "Gadget copied sucessfully"
 	else
 		printf "${RED}%s${NORMAL}\n" "Error while coping Gadget"
 		cleanUp
@@ -214,7 +200,7 @@ cd "$workDirectory"
 #Creating new IPA
 printf "${NORMAL}%s${NORMAL}\n" "Creating new IPA file in "$workDirectory"/"$ipaFilename"-patched.ipa"
 
-zip -r "$ipaFilename"-patched.ipa Payload/ > "$debugDir"
+zip -r "$ipaFilename"-patched.ipa Payload/ >> "$debugDir" 2>&1
 
 if [ "$?" -eq "0" ]
 then
@@ -228,7 +214,7 @@ fi
 #Signing new IPA
 printf "${NORMAL}%s${NORMAL}\n" "Signing IPA file "$workDirectory"/"$ipaFilename"-patched.ipa"
 
-isign -v -o "$ipaFilename"-patched-isigned.ipa "$ipaFilename"-patched.ipa > ~/file.txt 2>&1
+isign -v -o "$ipaFilename"-patched-isigned.ipa "$ipaFilename"-patched.ipa >> "$debugDir" 2>&1
 
 if [ "$?" -eq "0" ]
 then
@@ -242,7 +228,7 @@ fi
 #Installing signed IPA
 printf "${NORMAL}%s${NORMAL}\n" "Installing IPA file "$ipaFilename"-patched-isigned.ipa"
 
-ideviceinstaller -i "$ipaFilename"-patched-isigned.ipa
+ideviceinstaller -i "$ipaFilename"-patched-isigned.ipa | tee -a "$debugDir"
 
 if [ "$?" -eq "0" ]
 then
