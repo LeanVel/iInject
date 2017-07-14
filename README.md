@@ -1,11 +1,14 @@
 # iInject
-Tool to automate in Linux the process of embedding dynamic libraries in iOS applications
+Tool to automate the process of embedding dynamic libraries into iOS applications from GNU/Linux.
+The tool should work for non-jailbroken iOS devices running iOS 9 or higher. 
 
 Requirements
 ============
 
-- IPA files without encryption nor DRM protection
+- IPA files without encryption nor Fairplay protection
 - ZIP/UNZIP
+- gcc
+- Python
 - insert_dylib
 - iSign
 - curl
@@ -33,6 +36,7 @@ Since the master repository (https://github.com/Tyilo/insert_dylib) does not sup
 ```
   $ git https://github.com/LeanVel/insert_dylib
   $ cd insert_dylib
+  $ ./Install.sh
 ```
 
 isign
